@@ -7,6 +7,12 @@ $fileName1024 = "${filePrefix}_G1024.BNK"
 # Define the backup file name
 $backupFileName = "$fileName1024.bak"
 
+# Check if the target exists
+if (!(Test-Path -Path $fileName1024)) {
+    Write-Host "File to patch doesn't exist. Exiting early."
+    exit
+}
+
 # Check if a backup exists. If it does, assume the file has been modified.
 if (Test-Path -Path $backupFileName) {
     Write-Host "Backup file already exists. Assuming the file has been modified."
