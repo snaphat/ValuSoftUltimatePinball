@@ -7,7 +7,7 @@ Repository containing patches for [Ultimate Pinball (2002)](https://www.mobygame
 
 # Patches
 
-The following patches should be applied _after_ the binary patches from the [ValuSoftUltimatePinballBinaryPatches](https://github.com/snaphat/ValuSoftUltimatePinballBinaryPatches) repository.
+The following patches should be applied  <ins>**after**</ins> the binary patches from the [ValuSoftUltimatePinballBinaryPatches](https://github.com/snaphat/ValuSoftUltimatePinballBinaryPatches) repository.
 
 ## Ghost Name Patch
 - Files needed
