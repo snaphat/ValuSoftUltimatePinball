@@ -21,6 +21,12 @@ Fixes the display of `ghost.exe` in the taskbar. Any variation of "Ghost" cannot
 
 Fixes the incorrect spelling of San Francisco in `sanfran.exe`.
 
+## Project Zero File Count Patch
+- Patch files
+  - [_ProjectZeroFileCountPatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_ProjectZeroFileCountPatch)
+
+Fixes an incorrect file count issue in `PZ_G1024.BNK` caused by a bug in the UPG1024 patch from the [ValuSoftUltimatePinballBinaryPatches](https://github.com/snaphat/ValuSoftUltimatePinballBinaryPatches) repository.
+
 ## Golf Pause Patch
 - Patch files
   - [_GolfPausePatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_GolfPausePatch.ps1) (run this one)
