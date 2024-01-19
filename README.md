@@ -10,41 +10,41 @@ Repository containing patches for [Ultimate Pinball (2002)](https://www.mobygame
 The following patches should be applied  <ins>**after**</ins> the binary patches from the [ValuSoftUltimatePinballBinaryPatches](https://github.com/snaphat/ValuSoftUltimatePinballBinaryPatches) repository.
 
 ## Ghost Name Patch
-- Files needed
-  - _GhostNamePatch.ps1
+- Patch files
+  - [_GhostNamePatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_GhostNamePatch.ps1)
 
 Fixes the display of `ghost.exe` in the taskbar. Any variation of "Ghost" cannot be used as a class name in modern windows as it will cause the window to not display in the windows taskbar. We can get around the issue by inserting a non-printable character for \<DEL\> (0x7F) after the class name.
 
 ## San Francisco Name Patch
-- Files needed
-  - _SanFranNamePatch.ps1
+- Patch files
+  - [_SanFranNamePatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_SanFranNamePatch.ps1)
 
 Fixes the incorrect spelling of San Francisco in `sanfran.exe`.
 
 ## Golf Pause Patch
-- Files needed
-  - _GolfPausePatch.ps1
-  - _BNKTools.ps1
+- Patch files
+  - [_GolfPausePatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_GolfPausePatch.ps1) (run this one)
+  - [_BNKTools.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_BNKTools.ps1)
 
 Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `GF_G1024.BNK`.
 
 ## Roller Coaster Pause Patch
-- Files needed
-  - _RCoasterPausePatch.ps1
-  - _BNKTools.ps1
+- Patch files
+  - [_RCoasterPausePatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_RCoasterPausePatch.ps1) (run this one)
+  - [_BNKTools.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_BNKTools.ps1)
 
 Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `RC_G1024.BNK`.
 
 ## Saturn Pause Patch
-- Files needed
-  - _SaturnPausePatch.ps1
-  - _BNKTools.ps1
+- Patch files
+  - [_SaturnPausePatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_SaturnPausePatch.ps1) (run this one)
+  - [_BNKTools.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_BNKTools.ps1)
 
 Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `SA_G1024.BNK`.
 
 ## Zodiac Pause Patch
-- Files needed
-  - _ZodiacPausePatch.ps1
-  - _BNKTools.ps1
+- Patch files
+  - [_ZodiacPausePatch.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_ZodiacPausePatch.ps1) (run this one)
+  - [_BNKTools.ps1](https://raw.githubusercontent.com/snaphat/ValuSoftUltimatePinballPatches/main/_BNKTools.ps1)
 
 Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `ZO_G1024.BNK`.
