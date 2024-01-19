@@ -5,7 +5,6 @@ Repository containing patches for [Ultimate Pinball (2002)](https://www.mobygame
 <img src="https://github.com/snaphat/ValuSoftUltimatePinball/assets/5836001/c98be146-e893-4772-ae35-50518f513947" width="256" /> &emsp;
 <img src="https://github.com/snaphat/ValuSoftUltimatePinball/assets/5836001/630dca07-f206-4372-b488-b940026f6063" width="256" />
 
-
 # Ghost Name Patch
 - Files needed
   - _GhostNamePatch.ps1
@@ -22,26 +21,26 @@ Fixes the incorrect spelling of San Francisco in `sanfran.exe`.
 - Files needed
   - _GolfPausePatch.ps1
   - _BNKTools.ps1
- 
-Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
- 
+
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `GF_G1024.BNK`.
+
+# Roller Coaster Pause Patch
+- Files needed
+  - _RCoasterPausePatch.ps1
+  - _BNKTools.ps1
+
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `RC_G1024.BNK`.
+
 # Saturn Pause Patch
 - Files needed
   - _SaturnPausePatch.ps1
   - _BNKTools.ps1
 
-Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
- 
-# Roller Coaster Pause Patch
-- Files needed
-  - _GolfPausePatch.ps1
-  - _BNKTools.ps1
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `SA_G1024.BNK`.
 
-Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
- 
 # Zodiac Pause Patch
 - Files needed
   - _ZodiacPausePatch.ps1
   - _BNKTools.ps1
- 
-Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
+
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics to `ZO_G1024.BNK`.
