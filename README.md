@@ -6,8 +6,42 @@ Repository containing patches for [Ultimate Pinball (2002)](https://www.mobygame
 <img src="https://github.com/snaphat/ValuSoftUltimatePinball/assets/5836001/630dca07-f206-4372-b488-b940026f6063" width="256" />
 
 
-# _GhostNamePatch.ps1  
+# Ghost Name Patch
+- Files needed
+  - _GhostNamePatch.ps1
+
 Fixes the display of `ghost.exe` in the taskbar. Any variation of "Ghost" cannot be used as a class name in modern windows as it will cause the window to not display in the windows taskbar. We can get around the issue by inserting a non-printable character for \<DEL\> (0x7F) after the class name.
 
-# _SanFranNamePatch.ps1
+# San Francisco Name Patch
+- Files needed
+  - _SanFranNamePatch.ps1
+
 Fixes the incorrect spelling of San Francisco in `sanfran.exe`.
+
+# Golf Pause Patch
+- Files needed
+  - _GolfPausePatch.ps1
+  - _BNKTools.ps1
+ 
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
+ 
+# Saturn Pause Patch
+- Files needed
+  - _SaturnPausePatch.ps1
+  - _BNKTools.ps1
+
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
+ 
+# Roller Coaster Pause Patch
+- Files needed
+  - _GolfPausePatch.ps1
+  - _BNKTools.ps1
+
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
+ 
+# Zodiac Pause Patch
+- Files needed
+  - _ZodiacPausePatch.ps1
+  - _BNKTools.ps1
+ 
+Fixes a crash when the game is paused in the 1024x768 table by adding missing pause graphics.
