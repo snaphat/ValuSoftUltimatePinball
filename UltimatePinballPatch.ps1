@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    A utility class for handling BNK file operations.
+    A utility class for handling BNK file and general file patching operations.
 
 .DESCRIPTION
     The PatchTool class includes methods for reading data from byte arrays, manipulating BNK archives,
@@ -98,9 +98,11 @@ class PatchTool {
         The destination entry in the format "DestinationArchivePath:DestinationEntryName".
     #>
     static [void] BNKAdd([string]$sourceEntry, [string]$destinationEntry) {
+        # Split the source and destination entries into their respective paths and names.
         $sourceArchivePath, $sourceEntryName = $sourceEntry -split ':'
         $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
 
+        # Display the process of adding an entry in the console.
         Write-Host "- Adding entry " -NoNewLine
         Write-Host "$sourceArchivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
@@ -111,13 +113,16 @@ class PatchTool {
         Write-Host "$destinationEntryName" -ForeGroundColor cyan -NoNewLine
         Write-Host "."
 
+        # Perform a backup before modifying the destination archive.
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
+            # Load the source and destination archives.
             $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
             $entry = $sourceArchive.CloneEntry($sourceEntryName)
 
-            # Name of new entry
+            # Update the name of the cloned entry.
             $entry.ChangeName($destinationEntryName)
 
+            # Add the cloned entry to the destination archive and save it.
             $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
             $destinationArchive.AddEntry($entry)
             $destinationArchive.Save()
@@ -138,13 +143,16 @@ class PatchTool {
         The name of the entry to be removed.
     #>
     static [void] BNKRemove([string]$archivePath, [string]$entryName) {
+        # Display the process of removing an entry in the console.
         Write-Host "- Removing entry " -NoNewLine
         Write-Host "$archivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
         Write-Host "$entryName" -ForeGroundColor cyan -NoNewLine
         Write-Host "."
 
+        # Perform a backup before modifying the archive.
         if ([PatchTool]::BackupFile($archivePath)) {
+            # Load the archive, remove the specified entry, and save the changes.
             $archive = [BNKArchive]::Load($archivePath)
             $archive.RemoveEntry($entryName)
             $archive.Save()
@@ -167,9 +175,11 @@ class PatchTool {
         The destination entry in the format "DestinationArchivePath:DestinationEntryName".
     #>
     static [void] BNKReplace([string]$sourceEntry, [string]$destinationEntry) {
+        # Split the source and destination entries into their respective paths and names.
         $sourceArchivePath, $sourceEntryName = $sourceEntry -split ':'
         $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
 
+        # Display the process of replacing an entry in the console.
         Write-Host "- Replacing entry " -NoNewLine
         Write-Host "$sourceArchivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
@@ -180,10 +190,13 @@ class PatchTool {
         Write-Host "$destinationEntryName" -ForeGroundColor cyan  -NoNewLine
         Write-host "."
 
+        # Perform a backup before modifying the destination archive.
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
+            # Load the source and destination archives.
             $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
             $entry = $sourceArchive.CloneEntry($sourceEntryName)
 
+            # Replace the entry in the destination archive with the cloned entry and save it.
             $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
             $destinationArchive.ReplaceEntry($destinationEntryName, $entry)
             $destinationArchive.Save()
@@ -638,7 +651,7 @@ class BNKArchive {
         $this.entries[$indexToReplace] = $clone
     }
 
-<#
+    <#
 .SYNOPSIS
     Saves the BNKArchive to the original file.
 
@@ -654,7 +667,7 @@ class BNKArchive {
         $this.Save($this.archivePath)
     }
 
-     <#
+    <#
     .SYNOPSIS
         Saves the BNKArchive to a file.
 
