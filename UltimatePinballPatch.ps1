@@ -1,36 +1,79 @@
-# Provides static utility methods for reading various data types from a byte array.
-# These methods facilitate the extraction of different data types required for processing BNK file contents.
+<#
+.SYNOPSIS
+    A utility class for handling BNK file operations.
+
+.DESCRIPTION
+    The PatchTool class includes methods for reading data from byte arrays, manipulating BNK archives,
+    and patching files with byte-level precision.
+#>
 class PatchTool {
 
-    # Extracts a 32-bit unsigned integer from a byte array at a specific offset.
-    # Arguments:
-    #   $data - The byte array from which to read.
-    #   $offset - The position in the byte array to begin reading.
-    # Returns a 32-bit integer read from the specified position in the byte array.
-    static [uint32]ReadUInt32([byte[]]$data, [uint32]$offset) {
+    <#
+    .SYNOPSIS
+        Reads a 32-bit unsigned integer from a byte array at a specific offset.
+
+    .DESCRIPTION
+        Extracts a 4-byte segment from the byte array starting at the given offset and converts it to a 32-bit unsigned
+        integer.
+
+    .PARAMETER data
+        The byte array from which to read.
+
+    .PARAMETER offset
+        The position in the byte array to begin reading.
+
+    .OUTPUTS
+        System.UInt32
+        Returns a 32-bit unsigned integer.
+    #>
+    static [uint32] ReadUInt32([byte[]]$data, [uint32]$offset) {
         # Extracts a 4-byte segment from the byte array starting at the given offset
         # Converts this 4-byte segment to a 32-bit integer
         return [BitConverter]::ToUInt32($data[$offset..($offset + 3)], 0)
     }
 
-    # Extracts a segment of a byte array starting from a specified offset.
-    # Arguments:
-    #   $data - The byte array from which to extract a segment.
-    #   $offset - The position in the byte array to begin the segment.
-    #   $size - The length of the byte segment to extract.
-    # Returns a byte array containing the extracted segment.
-    static [byte[]]ReadByteArray([byte[]]$data, [uint32]$offset, [uint32]$size) {
+    <#
+    .SYNOPSIS
+        Extracts a segment of a byte array starting from a specified offset.
+
+    .DESCRIPTION
+        Returns a byte array containing the extracted segment, starting at the specified offset and spanning the given
+        size.
+
+    .PARAMETER data
+        The byte array to extract the segment from.
+
+    .PARAMETER offset
+        The starting position of the segment in the byte array.
+
+    .PARAMETER size
+        The length of the byte segment to extract.
+
+    .OUTPUTS
+        byte[]
+        Returns the specified segment of the byte array.
+    #>
+    static [byte[]] ReadByteArray([byte[]]$data, [uint32]$offset, [uint32]$size) {
         # Extracts a segment of the byte array starting at $offset and ending at $offset + $size
         # The -1 adjusts the range to be inclusive of the start and exclusive of the end
         return $data[$offset..($offset + $size - 1)]
     }
 
-    # Reads a string from a byte array, stopping at the first null byte.
-    # This method is useful for extracting null-terminated strings from binary data.
-    # Arguments:
-    #   $data - The byte array containing the string data.
-    # Returns a string extracted from the byte array, truncated at the first null byte.
-    static [string]ReadString([byte[]]$data) {
+    <#
+    .SYNOPSIS
+        Reads a string from a byte array, stopping at the first null byte.
+
+    .DESCRIPTION
+        Extracts a string from the byte array, truncated at the first null byte, using UTF-8 encoding.
+
+    .PARAMETER data
+        The byte array containing the string data.
+
+    .OUTPUTS
+        System.String
+        Returns a string extracted from the byte array.
+    #>
+    static [string] ReadString([byte[]]$data) {
         # Finds the position of the first null byte in the array
         $nullPos = [Array]::IndexOf($data, [byte]0)
         # Determines the length of the string data; if no null byte is found, uses the full length of the array
@@ -40,18 +83,21 @@ class PatchTool {
         return [System.Text.Encoding]::UTF8.GetString($nameData).Trim()
     }
 
-    # Adds an entry in one BNK archive with an entry from another BNK archive.
-    # The method performs a backup of the destination archive before making changes.
-    # It then loads both the source and destination archives, clones the specified entry from the source archive,
-    # Adds the corresponding entry in the destination archive with the clone, and finally saves the changes.
-    # Parameters:
-    #   $sourceEntry - String in the format "SourceArchivePath:SourceEntryName",
-    #                  where SourceArchivePath is the path of the source archive and
-    #                  SourceEntryName is the name of the entry in the source archive to clone.
-    #   $destinationEntry - String in the format "DestinationArchivePath:DestinationEntryName",
-    #                where DestinationArchivePath is the path of the destination archive and
-    #                DestinationEntryName is the name of the entry in the destination archive to be added.
-    static [void]BNKAdd([string]$sourceEntry, [string]$destinationEntry) {
+    <#
+    .SYNOPSIS
+        Adds an entry from one BNK archive to another.
+
+    .DESCRIPTION
+        Performs a backup of the destination archive before adding. It loads both source and destination archives,
+        clones the specified entry from the source, adds it to the destination, and then saves the changes.
+
+    .PARAMETER sourceEntry
+        The source entry in the format "SourceArchivePath:SourceEntryName".
+
+    .PARAMETER destinationEntry
+        The destination entry in the format "DestinationArchivePath:DestinationEntryName".
+    #>
+    static [void] BNKAdd([string]$sourceEntry, [string]$destinationEntry) {
         $sourceArchivePath, $sourceEntryName = $sourceEntry -split ':'
         $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
 
@@ -78,13 +124,20 @@ class PatchTool {
         }
     }
 
-    # Removes an entry from a BNK archive.
-    # The method performs a backup of the destination archive before making changes.
-    # It then loads the specified archive, removes the specified entry, and saves the changes to the archive.
-    # Parameters:
-    #   $archivePath - Path of the BNK archive from which an entry is to be removed.
-    #   $entryName - Name of the entry to be removed from the archive.
-    static [void]BNKRemove([string]$archivePath, [string]$entryName) {
+    <#
+    .SYNOPSIS
+        Removes an entry from a BNK archive.
+
+    .DESCRIPTION
+        Performs a backup of the archive before removing the specified entry, then saves the changes to the archive.
+
+    .PARAMETER archivePath
+        The path of the BNK archive from which an entry is to be removed.
+
+    .PARAMETER entryName
+        The name of the entry to be removed.
+    #>
+    static [void] BNKRemove([string]$archivePath, [string]$entryName) {
         Write-Host "- Removing entry " -NoNewLine
         Write-Host "$archivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
@@ -98,18 +151,22 @@ class PatchTool {
         }
     }
 
-    # Replaces an entry in one BNK archive with an entry from another BNK archive.
-    # The method performs a backup of the destination archive before making changes.
-    # It then loads both the source and destination archives, clones the specified entry from the source archive,
-    # replaces the corresponding entry in the destination archive with the clone, and finally saves the changes.
-    # Parameters:
-    #   $sourceEntry - String in the format "SourceArchivePath:SourceEntryName",
-    #                  where SourceArchivePath is the path of the source archive and
-    #                  SourceEntryName is the name of the entry in the source archive to clone.
-    #   $destinationEntry - String in the format "DestinationArchivePath:DestinationEntryName",
-    #                where DestinationArchivePath is the path of the destination archive and
-    #                DestinationEntryName is the name of the entry in the destination archive to be replaced.
-    static [void]BNKReplace([string]$sourceEntry, [string]$destinationEntry) {
+    <#
+    .SYNOPSIS
+        Replaces an entry in a BNK archive with another entry.
+
+    .DESCRIPTION
+        Performs a backup of the destination archive before replacing. Loads both source and destination archives,
+        clones the specified entry from the source, replaces the corresponding entry in the destination, and saves the
+        changes.
+
+    .PARAMETER sourceEntry
+        The source entry in the format "SourceArchivePath:SourceEntryName".
+
+    .PARAMETER destinationEntry
+        The destination entry in the format "DestinationArchivePath:DestinationEntryName".
+    #>
+    static [void] BNKReplace([string]$sourceEntry, [string]$destinationEntry) {
         $sourceArchivePath, $sourceEntryName = $sourceEntry -split ':'
         $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
 
@@ -133,13 +190,24 @@ class PatchTool {
         }
     }
 
-    # Performs a byte patching operation on a file after creating a backup.
-    # Throws an error if the backup fails or if no matching sequence is found.
-    # Arguments:
-    #   $filePath - The name of the file to be patched.
-    #   $searchBytes - The byte sequence to search for in the file.
-    #   $replaceBytes - The byte sequence to replace the found sequence with.
-    static [void]PatchBytes([string]$filePath, [byte[]]$searchBytes, [byte[]]$replaceBytes) {
+    <#
+    .SYNOPSIS
+        Performs a byte patching operation on a file.
+
+    .DESCRIPTION
+        Creates a backup of the file before patching. Searches for a specific byte sequence and replaces it with another.
+        Throws an error if the sequence is not found.
+
+    .PARAMETER filePath
+        The file to be patched.
+
+    .PARAMETER searchBytes
+        The byte sequence to search for in the file.
+
+    .PARAMETER replaceBytes
+        The byte sequence to replace the found sequence with.
+    #>
+    static [void] PatchBytes([string]$filePath, [byte[]]$searchBytes, [byte[]]$replaceBytes) {
 
         if ([PatchTool]::BackupFile($filePath)) {
             # Read the file bytes
@@ -180,12 +248,22 @@ class PatchTool {
         }
     }
 
-    # Backs up a file to the PatchBackups folder.
-    # Returns True if the backup is successful, or False if the file to back up does not exist.
-    # Throws an exception if the backup file already exists.
-    # Arguments:
-    #   $fileName - The name of the file to be backed up.
-    static [bool]BackupFile([string]$fileName) {
+    <#
+    .SYNOPSIS
+        Backs up a file to a specific directory.
+
+    .DESCRIPTION
+        Checks if the file exists and backs it up to the 'PatchBackups' directory.
+        Throws an exception if the backup file already exists.
+
+    .PARAMETER fileName
+        The name of the file to be backed up.
+
+    .OUTPUTS
+        Boolean
+        Returns True if the backup is successful, False otherwise.
+    #>
+    static [bool] BackupFile([string]$fileName) {
         # Check if the file exists
         if (Test-Path $fileName) {
             # Create the PatchBackups directory if it doesn't exist
@@ -211,9 +289,15 @@ class PatchTool {
         }
     }
 
-    # Restores any backup files from the PatchBackups folder to their original location.
-    # This method will overwrite any existing files in the original location.
-    static [void]RestoreBackups() {
+    <#
+    .SYNOPSIS
+        Restores backup files to their original location.
+
+    .DESCRIPTION
+        Moves files from the 'PatchBackups' directory back to their original location, overwriting existing files if
+        necessary.
+    #>
+    static [void] RestoreBackups() {
         $backupDir = "PatchBackups"
 
         # Check if the PatchBackups directory exists
