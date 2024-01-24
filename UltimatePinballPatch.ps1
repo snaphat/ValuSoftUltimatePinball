@@ -323,26 +323,43 @@ class PatchTool {
     }
 }
 
-# Represents an entry in a BNK file.
-# This class encapsulates the details and data of a single entry within a BNK archive.
+<#
+.SYNOPSIS
+    Represents an entry in a BNK file.
+
+.DESCRIPTION
+    This class encapsulates the details and data of a single entry within a BNK archive. It includes properties
+    for the entry's data, name, uncompressed size, and compression state.
+#>
 class BNKEntry {
     [byte[]]$data
     [byte[]]$name
     [uint32]$uncompressedSize
     [uint32]$isCompressed
 
-    # Default Constructor for a BNKEntry object.
-    # Returns an empty uninitialized BNKEntry.
+    <#
+    .SYNOPSIS
+        Default constructor for a BNKEntry object.
+
+    .DESCRIPTION
+        Creates and returns an empty, uninitialized BNKEntry.
+    #>
     BNKEntry() {}
 
-    # Constructor for initializing a BNKEntry object.
-    # Extracts and assigns properties of a BNK file entry from the archive data based on a given offset.
-    # Arguments:
-    #   $archiveData - The complete byte array of the BNK file.
-    #   $entryOffset - The offset in the byte array where this entry's data begins.
-    # The constructor extracts the entry's name, sizes, compression state, and the data itself.
-    # It calculates the starting point of the entry's data within the archive and reads the corresponding bytes.
-    # It throws an exception if the calculated start offset is outside the bounds of the archive data.
+    <#
+    .SYNOPSIS
+        Constructor for initializing a BNKEntry object from archive data.
+
+    .DESCRIPTION
+        Extracts and assigns properties of a BNK file entry from the archive data based on a given offset.
+        It calculates the starting point of the entry's data within the archive and reads the corresponding bytes.
+
+    .PARAMETER archiveData
+        The complete byte array of the BNK file.
+
+    .PARAMETER entryOffset
+        The offset in the byte array where this entry's data begins.
+    #>
     BNKEntry([byte[]]$archiveData, [uint32]$entryOffset) {
         # Read the name (32 bytes) of the entry from the archive data at the specified entry offset
         $this.name = [PatchTool]::ReadByteArray($archiveData, $entryOffset, 32)
@@ -365,8 +382,13 @@ class BNKEntry {
         }
     }
 
-    # Creates a deep copy of the current BNKEntry object.
-    # The cloned entry will have the same data, name, uncompressedSize, and isCompressed properties.
+    <#
+    .SYNOPSIS
+        Creates a deep copy of the current BNKEntry object.
+
+    .DESCRIPTION
+        The cloned entry will have the same data, name, uncompressedSize, and isCompressed properties.
+    #>
     [BNKEntry]Clone() {
         # Create a new BNKEntry object for the clone
         $clone = [BNKEntry]::new()
@@ -387,10 +409,16 @@ class BNKEntry {
         return $clone
     }
 
-    # Changes the name of the entry.
-    # Arguments:
-    #   $newName - The new name to set for the entry.
-    # The method throws an exception if the new name exceeds the 32-byte limit.
+    <#
+    .SYNOPSIS
+        Changes the name of the entry.
+
+    .DESCRIPTION
+        Sets a new name for the entry. Throws an exception if the new name exceeds the 32-byte limit.
+
+    .PARAMETER newName
+        The new name to set for the entry.
+    #>
     [void] ChangeName([string]$newName) {
         # Convert the string to a byte array (UTF8 encoding)
         $newNameBytes = [System.Text.Encoding]::UTF8.GetBytes($newName)
@@ -414,16 +442,28 @@ class BNKEntry {
     }
 }
 
-# Represents a BNK archive. This class encapsulates the data and functionality for working with BNK files.
+<#
+.SYNOPSIS
+    Represents a BNK archive.
+
+.DESCRIPTION
+    This class encapsulates the data and functionality for working with BNK files. It includes methods for loading
+    and saving archives, adding, removing, and replacing entries.
+#>
 class BNKArchive {
     [string] $archivePath
     [BNKEntry[]] $entries
 
-    # Constructor to initialize BNKArchive from a file path.
-    # Reads the BNK file data from the given path and parses it into entries and footer.
-    # Arguments:
-    #   $archivePath - The file path of the BNK file to be processed.
-    # The constructor reads the entire file as a byte array and extracts individual entries and the footer.
+    <#
+    .SYNOPSIS
+        Constructor to initialize BNKArchive from a file path.
+
+    .DESCRIPTION
+        Reads the BNK file data from the given path and parses it into entries and footer.
+
+    .PARAMETER archivePath
+        The file path of the BNK file to be processed.
+    #>
     BNKArchive([string]$archivePath) {
         $this.archivePath = $archivePath
         $this.entries = @()  # Initialize the entries array as empty
@@ -459,23 +499,36 @@ class BNKArchive {
         }
     }
 
-    # Static method to load a BNKArchive from a specified file path.
-    # This method creates and returns a new instance of the BNKArchive class based on the provided archive path.
-    # Arguments:
-    #   $archivePath - The file path of the BNK archive to be loaded.
-    # Returns:
-    #   An instance of the BNKArchive class initialized with the data from the specified file path.
+    <#
+    .SYNOPSIS
+        Loads a BNKArchive from a specified file path.
+
+    .DESCRIPTION
+        Creates and returns a new instance of the BNKArchive class based on the provided archive path.
+
+    .PARAMETER archivePath
+        The file path of the BNK archive to be loaded.
+
+    .OUTPUTS
+        BNKArchive
+        An instance of the BNKArchive class.
+    #>
     static [BNKArchive] Load([string]$archivePath) {
         # Create a new instance of BNKArchive using the provided file path and return it
         return [BNKArchive]::new($archivePath)
     }
 
-    # Clones a deep copy of an entry from the archive based on its name.
-    # The cloned entry will have the same data, name, uncompressedSize, and isCompressed properties.
-    # Arguments:
-    #   $name - The name of the entry to clone.
-    # Returns a deep copy of the BNKEntry object with the specified name.
-    # Throws an error if no entry with the specified name is found.
+    <#
+    .SYNOPSIS
+        Clones an entry from the archive.
+
+    .DESCRIPTION
+        Creates a deep copy of an entry from the archive based on its name. Throws an error if no entry with
+        the specified name is found.
+
+    .PARAMETER name
+        The name of the entry to clone.
+    #>
     [BNKEntry] CloneEntry([string]$name) {
         foreach ($entry in $this.entries) {
             if ([PatchTool]::ReadString($entry.name) -eq $name) {
@@ -488,10 +541,17 @@ class BNKArchive {
         throw "Entry with name '$name' not found in the archive."
     }
 
-    # Adds a cloned BNKEntry to the archive and updates all entry offsets.
-    # This ensures that the added entry is independent of any external modifications.
-    # Arguments:
-    #   $newEntry - The BNKEntry object to be cloned and added to the archive.
+    <#
+    .SYNOPSIS
+        Adds a cloned BNKEntry to the archive.
+
+    .DESCRIPTION
+        Adds a cloned BNKEntry to the archive and updates all entry offsets. This ensures that the added entry
+        is independent of any external modifications.
+
+    .PARAMETER newEntry
+        The BNKEntry object to be cloned and added to the archive.
+    #>
     [void] AddEntry([BNKEntry]$newEntry) {
         # Perform validations
         if ($null -eq $newEntry) {
@@ -515,9 +575,16 @@ class BNKArchive {
         $this.entries += $newEntry.Clone()
     }
 
-    # Removes a BNKEntry from the archive by its name.
-    # Arguments:
-    #   $name - The name of the entry to remove.
+    <#
+    .SYNOPSIS
+        Removes a BNKEntry from the archive by its name.
+
+    .DESCRIPTION
+        Removes an entry from the archive based on the specified name.
+
+    .PARAMETER name
+        The name of the entry to remove.
+    #>
     [void] RemoveEntry([string]$name) {
         # Check if the entry exists
         $entryExists = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -eq $name }
@@ -529,11 +596,20 @@ class BNKArchive {
         $this.entries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ne $name }
     }
 
-    # Replaces an existing entry with a provided BNKEntry, while retaining the original name.
-    # This method is used to update the data of an entry without changing its identity within the archive.
-    # Arguments:
-    #   $entryName - The name of the entry to be replaced.
-    #   $newEntry - The new BNKEntry object to replace the existing entry.
+    <#
+    .SYNOPSIS
+        Replaces an existing entry in the archive.
+
+    .DESCRIPTION
+        Replaces an existing entry with a provided BNKEntry, while retaining the original name.
+        This method updates the data of an entry without changing its identity within the archive.
+
+    .PARAMETER entryName
+        The name of the entry to be replaced.
+
+    .PARAMETER newEntry
+        The new BNKEntry object to replace the existing entry.
+    #>
     [void] ReplaceEntry([string]$entryName, [BNKEntry]$newEntry) {
         # Validate that the new entry is not null
         if ($null -eq $newEntry) {
@@ -562,16 +638,32 @@ class BNKArchive {
         $this.entries[$indexToReplace] = $clone
     }
 
-    # Saves the BNKArchive to a file.
-    # Writes the contents of the archive, including all entries and the footer, to a file.
+<#
+.SYNOPSIS
+    Saves the BNKArchive to the original file.
+
+.DESCRIPTION
+    Writes the contents of the archive, including all entries and the footer, back to the original file
+    specified during the creation of the BNKArchive object. This is an overloaded method that uses the
+    archive's own path for saving.
+
+.OUTPUTS
+    None. This method writes the updated archive data to the file system.
+#>
     [void] Save() {
         $this.Save($this.archivePath)
     }
 
-    # Saves the BNKArchive to a file.
-    # Writes the contents of the archive, including all entries and the footer, to a file.
-    # Arguments:
-    #   $fileName - The file name to save the archive to.
+     <#
+    .SYNOPSIS
+        Saves the BNKArchive to a file.
+
+    .DESCRIPTION
+        Writes the contents of the archive, including all entries and the footer, to a file.
+
+    .PARAMETER fileName
+        The file name to save the archive to.
+    #>
     [void] Save([string]$fileName) {
         # Open a file stream for writing
         $fileStream = [System.IO.FileStream]::new($fileName, [System.IO.FileMode]::Create)
