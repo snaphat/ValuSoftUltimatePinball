@@ -533,6 +533,33 @@ class BNKArchive {
 
     <#
     .SYNOPSIS
+        Checks if an entry exists in the archive.
+
+    .DESCRIPTION
+        Determines if the archive contains an entry with a specific name. This method performs a case-insensitive
+        comparison to check for the presence of an entry.
+
+    .PARAMETER name
+        The name of the entry to search for in the archive.
+
+    .OUTPUTS
+        Boolean
+        Returns True if the entry exists in the archive, False otherwise.
+    #>
+    [bool] HasEntry([string]$name) {
+        foreach ($entry in $this.entries) {
+            # Perform a case-insensitive comparison of the entry's name with the provided name
+            if ([PatchTool]::ReadString($entry.name) -ieq $name) {
+                return $true
+            }
+        }
+
+        # Return false if no entry with the specified name is found
+        return $false
+    }
+
+    <#
+    .SYNOPSIS
         Clones an entry from the archive.
 
     .DESCRIPTION
@@ -666,27 +693,6 @@ class BNKArchive {
 
     <#
     .SYNOPSIS
-        Removes an existing entry in the archive.
-
-    .DESCRIPTION
-        Removes an entry from the archive, identified by the passed-in name.
-
-    .PARAMETER name
-        The name of the entry to remove.
-    #>
-    [void] RemoveEntry([string]$name) {
-        # Check if the entry exists
-        $entryExists = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ieq $name }
-        if (-not $entryExists) {
-            throw "Entry with name '$name' not found."
-        }
-
-        # Remove the entry with the specified name
-        $this.entries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ine $name }
-    }
-
-    <#
-    .SYNOPSIS
         Replaces an existing entry in the archive.
 
     .DESCRIPTION
@@ -742,6 +748,27 @@ class BNKArchive {
 
         # Replace the old entry with the cloned new entry
         $this.entries[$indexToReplace] = $clone
+    }
+
+    <#
+    .SYNOPSIS
+        Removes an existing entry in the archive.
+
+    .DESCRIPTION
+        Removes an entry from the archive, identified by the passed-in name.
+
+    .PARAMETER name
+        The name of the entry to remove.
+    #>
+    [void] RemoveEntry([string]$name) {
+        # Check if the entry exists
+        $entryExists = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ieq $name }
+        if (-not $entryExists) {
+            throw "Entry with name '$name' not found."
+        }
+
+        # Remove the entry with the specified name
+        $this.entries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ine $name }
     }
 
     <#
