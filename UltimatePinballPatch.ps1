@@ -120,7 +120,7 @@ class PatchTool {
             $entry = $sourceArchive.CloneEntry($sourceEntryName)
 
             # Update the name of the cloned entry.
-            $entry.ChangeName($destinationEntryName)
+            $entry.Rename($destinationEntryName)
 
             # Add the cloned entry to the destination archive and save it.
             $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
@@ -432,7 +432,7 @@ class BNKEntry {
     .PARAMETER newName
         The new name to set for the entry.
     #>
-    [void] ChangeName([string]$newName) {
+    [void] Rename([string]$newName) {
         # Convert the string to a byte array (UTF8 encoding)
         $newNameBytes = [System.Text.Encoding]::UTF8.GetBytes($newName)
 
@@ -544,7 +544,7 @@ class BNKArchive {
     #>
     [BNKEntry] CloneEntry([string]$name) {
         foreach ($entry in $this.entries) {
-            if ([PatchTool]::ReadString($entry.name) -eq $name) {
+            if ([PatchTool]::ReadString($entry.name) -ieq $name) {
                 # Create and return a deep copy of the found entry
                 return $entry.Clone()
             }
@@ -556,57 +556,133 @@ class BNKArchive {
 
     <#
     .SYNOPSIS
-        Adds a cloned BNKEntry to the archive.
+        Adds a new entry to the archive.
 
     .DESCRIPTION
-        Adds a cloned BNKEntry to the archive and updates all entry offsets. This ensures that the added entry
-        is independent of any external modifications.
+        Adds a new entry to the archive, identified by the name within the passed-in BNKEntry object. This method
+        performs a deep copy of the provided BNKEntry object.
 
-    .PARAMETER newEntry
-        The BNKEntry object to be cloned and added to the archive.
+    .PARAMETER entry
+        The BNKEntry object to add to the archive.
     #>
-    [void] AddEntry([BNKEntry]$newEntry) {
-        # Perform validations
-        if ($null -eq $newEntry) {
-            throw "New entry is null and cannot be added."
-        }
-
-        if ($newEntry.data.Length -eq 0) {
-            throw "New entry has no data."
-        }
-
-        # Check for duplicate entry names
-        $newEntryName = [PatchTool]::ReadString($newEntry.name)
-        foreach ($entry in $this.entries) {
-            if ([PatchTool]::ReadString($entry.name) -eq $newEntryName) {
-                throw "An entry with the name '$newEntryName' already exists."
-            }
-        }
-
-        # Clone the new entry and add it to the entries array
-        # This approach ensures that the entry within the archive is a distinct object
-        $this.entries += $newEntry.Clone()
+    [void] AddEntry([BNKEntry]$entry) {
+        $this.AddEntry([PatchTool]::ReadString($entry.name), $entry, $false)
     }
 
     <#
     .SYNOPSIS
-        Removes a BNKEntry from the archive by its name.
+        Adds a new entry to the archive or replaces an existing one.
 
     .DESCRIPTION
-        Removes an entry from the archive based on the specified name.
+        Adds a new entry to the archive, identified by the name within the passed-in BNKEntry object; or, if an entry
+        with the same name already exists and 'forceReplace' is set to True, replaces it. This method performs a deep
+        copy of the provided BNKEntry object.
+
+    .PARAMETER entry
+        The BNKEntry object to add to the archive.
+
+    .PARAMETER forceReplace
+        A Boolean flag indicating whether to forcibly replace an existing entry with the same name. If True, an existing
+        entry with the same name will be replaced; if False, the new entry will only be added if no existing entry has
+        the same name.
+    #>
+    [void] AddEntry([BNKEntry]$entry, [bool]$forceReplace) {
+        $this.AddEntry([PatchTool]::ReadString($entry.name), $entry, $forceReplace)
+    }
+
+    <#
+    .SYNOPSIS
+        Adds a new entry to the archive, specified by the entry name parameter.
+
+    .DESCRIPTION
+        Adds a new entry to the archive, identified by the provided entry name parameter, with those from the passed-in
+        BNKEntry object. The name within the BNKEntry object is not used. This method performs a deep copy of the
+        provided BNKEntry object.
+
+    .PARAMETER entryName
+        The name of the entry to add to the archive.
+
+    .PARAMETER entry
+        The BNKEntry object to add to the archive. The name within this BNKEntry is not used for identifying the entry
+        to be added.
+    #>
+    [void] AddEntry([string]$entryName, [BNKEntry]$entry) {
+        $this.AddEntry($entryName, $entry, $false)
+    }
+
+    <#
+    .SYNOPSIS
+        Adds a new entry to the archive or replaces an existing one, specified by the entry name parameter.
+
+    .DESCRIPTION
+        Adds a new entry to the archive, identified by the provided entry name parameter, with those from the passed-in
+        BNKEntry object; or, if an entry with the same name already exists and 'forceReplace' is set to True, replaces
+        it. The name within the BNKEntry object is not used. This method performs a deep copy of the provided BNKEntry
+        object.
+
+    .PARAMETER entryName
+        The name of the entry to add to the archive or replace.
+
+    .PARAMETER entry
+        The BNKEntry object to add to the archive or replace. The name within this BNKEntry is not used for identifying
+        the entry to be added.
+
+    .PARAMETER forceReplace
+        A Boolean flag indicating whether to forcibly replace an existing entry with the same name. If True, an existing
+        entry with the same name will be replaced; if False, the new entry will only be added if no existing entry has
+        the same name.
+    #>
+    [void] AddEntry([string]$entryName, [BNKEntry]$entry, [bool]$forceReplace) {
+        Write-Host $entry.data.Length
+        # Perform validations
+        if ($null -eq $entry) {
+            throw "New entry is null and cannot be added."
+        }
+
+        if ($entry.data.Length -eq 0) {
+            throw "New entry has no data."
+        }
+
+        # Check for duplicate entry names
+        foreach ($entry in $this.entries) {
+            if ([PatchTool]::ReadString($entry.name) -ieq $entryName) {
+                if (!$forceReplace) {
+                    throw "An entry with the name '$entryName' already exists."
+                }
+                else {
+                    $this.replaceEntry($entryName, $entry)
+                    return
+                }
+            }
+        }
+
+        # Clone the new entry to ensure independence and retain the original name of the entry
+        $clone = $entry.Clone()
+        $clone.Rename($entryName);
+
+        # Add the new entry
+        $this.entries += $clone
+    }
+
+    <#
+    .SYNOPSIS
+        Removes an existing entry in the archive.
+
+    .DESCRIPTION
+        Removes an entry from the archive, identified by the passed-in name.
 
     .PARAMETER name
         The name of the entry to remove.
     #>
     [void] RemoveEntry([string]$name) {
         # Check if the entry exists
-        $entryExists = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -eq $name }
+        $entryExists = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ieq $name }
         if (-not $entryExists) {
             throw "Entry with name '$name' not found."
         }
 
         # Remove the entry with the specified name
-        $this.entries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ne $name }
+        $this.entries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ine $name }
     }
 
     <#
@@ -614,25 +690,42 @@ class BNKArchive {
         Replaces an existing entry in the archive.
 
     .DESCRIPTION
-        Replaces an existing entry with a provided BNKEntry, while retaining the original name.
-        This method updates the data of an entry without changing its identity within the archive.
+        Replaces the data and properties of an existing entry in the archive, identified by the name within the
+        passed-in BNKEntry object. This method performs a deep copy of the provided BNKEntry object.
+
+    .PARAMETER entry
+        The BNKEntry object providing new data and properties.
+    #>
+    [void] ReplaceEntry([BNKEntry]$entry) {
+        $this.replaceEntry([PatchTool]::ReadString($entry.name), $entry);
+    }
+
+    <#
+    .SYNOPSIS
+        Replaces an existing entry in the archive, specified by the entry name parameter.
+
+    .DESCRIPTION
+        Replaces the data and properties of an existing entry in the archive, identified by the provided entry name
+        parameter, with those from the passed-in BNKEntry object. The name within the BNKEntry object is not used. This
+        method performs a deep copy of the provided BNKEntry object.
 
     .PARAMETER entryName
-        The name of the entry to be replaced.
+        The name of the entry to replace within the archive.
 
-    .PARAMETER newEntry
-        The new BNKEntry object to replace the existing entry.
+    .PARAMETER entry
+        The BNKEntry object providing new data and properties. The name within this BNKEntry is not used for identifying
+        the entry to be replaced.
     #>
-    [void] ReplaceEntry([string]$entryName, [BNKEntry]$newEntry) {
+    [void] ReplaceEntry([string]$entryName, [BNKEntry]$entry) {
         # Validate that the new entry is not null
-        if ($null -eq $newEntry) {
+        if ($null -eq $entry) {
             throw "New entry is null and cannot be used for replacement."
         }
 
         # Find the index of the entry to be replaced based on the provided name
         $indexToReplace = -1
         for ($i = 0; $i -lt $this.entries.Length; $i++) {
-            if ([PatchTool]::ReadString($this.entries[$i].name) -eq $entryName) {
+            if ([PatchTool]::ReadString($this.entries[$i].name) -ieq $entryName) {
                 $indexToReplace = $i
                 break
             }
@@ -644,8 +737,8 @@ class BNKArchive {
         }
 
         # Clone the new entry to ensure independence and retain the original name of the entry
-        $clone = $newEntry.Clone()
-        $clone.name = $this.entries[$indexToReplace].name
+        $clone = $entry.Clone()
+        $clone.Rename($entryName);
 
         # Replace the old entry with the cloned new entry
         $this.entries[$indexToReplace] = $clone
