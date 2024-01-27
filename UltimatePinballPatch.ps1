@@ -1,3 +1,6 @@
+# Set ErrorActionPreference to "Stop"
+$ErrorActionPreference = "Stop"
+
 <#
 .SYNOPSIS
     A utility class for handling BNK file and general file patching operations.
@@ -478,6 +481,11 @@ class BNKArchive {
         The file path of the BNK file to be processed.
     #>
     BNKArchive([string]$archivePath) {
+        # Check that the archive exists.
+        if (!(Test-Path $archivePath -PathType Leaf)) {
+            throw "'$archivePath' not found!"
+        }
+
         $this.archivePath = $archivePath
         $this.entries = @()  # Initialize the entries array as empty
 
@@ -772,17 +780,17 @@ class BNKArchive {
     }
 
     <#
-.SYNOPSIS
-    Saves the BNKArchive to the original file.
+    .SYNOPSIS
+        Saves the BNKArchive to the original file.
 
-.DESCRIPTION
-    Writes the contents of the archive, including all entries and the footer, back to the original file
-    specified during the creation of the BNKArchive object. This is an overloaded method that uses the
-    archive's own path for saving.
+    .DESCRIPTION
+        Writes the contents of the archive, including all entries and the footer, back to the original file
+        specified during the creation of the BNKArchive object. This is an overloaded method that uses the
+        archive's own path for saving.
 
-.OUTPUTS
-    None. This method writes the updated archive data to the file system.
-#>
+    .OUTPUTS
+        None. This method writes the updated archive data to the file system.
+    #>
     [void] Save() {
         $this.Save($this.archivePath)
     }
@@ -798,6 +806,9 @@ class BNKArchive {
         The file name to save the archive to.
     #>
     [void] Save([string]$fileName) {
+        # Sort entries before saving
+        $this.entries = $this.entries | Sort-Object{[PatchTool]::ReadString($_.name)}
+
         # Open a file stream for writing
         $fileStream = [System.IO.FileStream]::new($fileName, [System.IO.FileMode]::Create)
 
