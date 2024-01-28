@@ -211,8 +211,8 @@ class PatchTool {
         Performs a byte patching operation on a file.
 
     .DESCRIPTION
-        Creates a backup of the file before patching. Searches for a specific byte sequence and replaces it with another.
-        Throws an error if the sequence is not found.
+        Creates a backup of the file before patching. Searches for a specific byte sequence and replaces it with
+        another. Throws an error if the sequence is not found.
 
     .PARAMETER filePath
         The file to be patched.
@@ -269,8 +269,8 @@ class PatchTool {
         Backs up a file to a specific directory.
 
     .DESCRIPTION
-        Checks if the file exists and backs it up to the 'PatchBackups' directory.
-        Throws an exception if the backup file already exists.
+        Checks if the file exists and backs it up to the 'PatchBackups' directory. Throws an exception if the backup
+        file already exists.
 
     .PARAMETER fileName
         The name of the file to be backed up.
@@ -344,14 +344,14 @@ class PatchTool {
     Represents an entry in a BNK file.
 
 .DESCRIPTION
-    This class encapsulates the details and data of a single entry within a BNK archive. It includes properties
-    for the entry's data, name, uncompressed size, and compression state.
+    This class encapsulates the details and data of a single entry within a BNK archive. It includes properties for the
+    entry's data, name, uncompressed size, and compression state.
 #>
 class BNKEntry {
-    [byte[]]$data
-    [byte[]]$name
-    [uint32]$uncompressedSize
-    [uint32]$isCompressed
+    [byte[]] $data
+    [byte[]] $name
+    [uint32] $uncompressedSize
+    [uint32] $isCompressed
 
     <#
     .SYNOPSIS
@@ -367,8 +367,8 @@ class BNKEntry {
         Constructor for initializing a BNKEntry object from archive data.
 
     .DESCRIPTION
-        Extracts and assigns properties of a BNK file entry from the archive data based on a given offset.
-        It calculates the starting point of the entry's data within the archive and reads the corresponding bytes.
+        Extracts and assigns properties of a BNK file entry from the archive data based on a given offset. It calculates
+        the starting point of the entry's data within the archive and reads the corresponding bytes.
 
     .PARAMETER archiveData
         The complete byte array of the BNK file.
@@ -400,12 +400,51 @@ class BNKEntry {
 
     <#
     .SYNOPSIS
+        Initializes a BNKEntry object from a BNKWrappedEntry object.
+
+    .DESCRIPTION
+        Converts a BNKWrappedEntry back into a BNKEntry. This constructor decodes the Base64 encoded data and name from
+        the BNKWrappedEntry and sets them along with the uncompressedSize and isCompressed properties to create a new
+        BNKEntry object.
+
+    .PARAMETER entry
+        The BNKWrappedEntry object to be converted into a BNKEntry.
+    #>
+    BNKEntry([BNKWrappedEntry]$entry) {
+        $this.data = [System.Convert]::FromBase64String($entry.data)
+        $this.name = [System.Convert]::FromBase64String($entry.name)
+        $this.uncompressedSize = $entry.uncompressedSize
+        $this.isCompressed = $entry.isCompressed
+    }
+
+    <#
+    .SYNOPSIS
+        Wraps the current BNKEntry object into a BNKWrappedEntry object.
+
+    .DESCRIPTION
+        Encodes the current BNKEntry object's data and name into Base64 and creates a new BNKWrappedEntry object with
+        these encoded values along with the uncompressedSize and isCompressed properties.
+
+    .OUTPUTS
+        BNKWrappedEntry
+        Returns a BNKWrappedEntry object representing the wrapped version of the current BNKEntry.
+
+    .EXAMPLE
+        $bnkEntry = [BNKEntry]::new(...)
+        $wrappedEntry = $bnkEntry.Wrap()
+    #>
+    [BNKWrappedEntry] Wrap() {
+        return [BNKWrappedEntry]::new($this);
+    }
+
+    <#
+    .SYNOPSIS
         Creates a deep copy of the current BNKEntry object.
 
     .DESCRIPTION
         The cloned entry will have the same data, name, uncompressedSize, and isCompressed properties.
     #>
-    [BNKEntry]Clone() {
+    [BNKEntry] Clone() {
         # Create a new BNKEntry object for the clone
         $clone = [BNKEntry]::new()
 
@@ -455,6 +494,111 @@ class BNKEntry {
 
         # Assign the padded byte array to the name
         $this.name = $paddedNameBytes
+    }
+}
+
+<#
+.SYNOPSIS
+    Represents a wrapped version of a BNKEntry object with Base64 encoded data.
+
+.DESCRIPTION
+    BNKWrappedEntry encodes BNKEntry object data and names into Base64. It retains the original entry properties and
+    supports conversion back to BNKEntry.
+#>
+class BNKWrappedEntry {
+    [string] $data
+    [string] $name
+    [uint32] $uncompressedSize
+    [uint32] $isCompressed
+
+    <#
+    .SYNOPSIS
+        Initializes a new instance of the BNKWrappedEntry class from a BNKEntry object.
+
+    .DESCRIPTION
+        This constructor takes a BNKEntry object, converts its data and name to Base64 encoded strings, and retains its
+        uncompressedSize and isCompressed properties.
+
+    .PARAMETER entry
+        The BNKEntry object to wrap.
+
+    .EXAMPLE
+        $bnkEntry = [BNKEntry]::new(...)
+        $wrappedEntry = [BNKWrappedEntry]::new($bnkEntry)
+    #>
+    BNKWrappedEntry([BNKEntry]$entry) {
+        $this.data = [System.Convert]::ToBase64String($entry.data)
+        $this.name = [System.Convert]::ToBase64String($entry.name)
+        $this.uncompressedSize = $entry.uncompressedSize
+        $this.isCompressed = $entry.isCompressed
+    }
+
+    <#
+    .SYNOPSIS
+        Initializes a new instance of the BNKWrappedEntry class using provided data and properties.
+
+    .DESCRIPTION
+        This constructor initializes a BNKWrappedEntry object using provided Base64 encoded data and name, along with
+        uncompressedSize and isCompressed values.
+
+    .PARAMETER data
+        Base64 encoded string representing the entry's data.
+
+    .PARAMETER name
+        Base64 encoded string representing the entry's name.
+
+    .PARAMETER uncompressedSize
+        Size of the uncompressed data.
+
+    .PARAMETER isCompressed
+        Indicates whether the data is compressed.
+
+    .EXAMPLE
+        $wrappedEntry = [BNKWrappedEntry]::new($data, $name, $uncompressedSize, $isCompressed)
+    #>
+    BNKWrappedEntry([string]$data, [string]$name, [uint32]$uncompressedSize, [uint32]$isCompressed) {
+        $this.data = $data
+        $this.name = $name
+        $this.uncompressedSize = $uncompressedSize
+        $this.isCompressed = $isCompressed
+    }
+
+    <#
+    .SYNOPSIS
+        Converts the wrapped entry back into a BNKEntry object.
+
+    .DESCRIPTION
+        This method decodes the Base64 encoded data and name in the BNKWrappedEntry object and returns a new BNKEntry
+        object with these properties.
+
+    .OUTPUTS
+        BNKEntry
+        Returns a BNKEntry object reconstructed from the BNKWrappedEntry.
+
+    .EXAMPLE
+        $unwrappedEntry = $wrappedEntry.Unwrap()
+    #>
+    [BNKEntry] Unwrap() {
+        return [BNKEntry]::new($this);
+    }
+
+    <#
+    .SYNOPSIS
+        Outputs a PowerShell command that can recreate the current BNKWrappedEntry object.
+
+    .DESCRIPTION
+        This method generates and prints a PowerShell command line that can be used to recreate the current
+        BNKWrappedEntry object. Useful for debugging or logging the state of the object.
+
+    .OUTPUTS
+        Void
+        Outputs the creation command to the console but does not return any value.
+
+    .EXAMPLE
+        $wrappedEntry.Dump()
+    #>
+    [void] Dump() {
+        Write-Host "`$entry = [BNKWrappedEntry]::New(`"$($this.data)`", `"$($this.name)`", $($this.uncompressedSize), $($this.isCompressed)).Unwrap()"
     }
 }
 
@@ -807,7 +951,7 @@ class BNKArchive {
     #>
     [void] Save([string]$fileName) {
         # Sort entries before saving
-        $this.entries = $this.entries | Sort-Object{[PatchTool]::ReadString($_.name)}
+        $this.entries = $this.entries | Sort-Object { [PatchTool]::ReadString($_.name) }
 
         # Open a file stream for writing
         $fileStream = [System.IO.FileStream]::new($fileName, [System.IO.FileMode]::Create)
