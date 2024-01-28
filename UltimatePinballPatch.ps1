@@ -812,7 +812,6 @@ class BNKArchive {
         the same name.
     #>
     [void] AddEntry([string]$entryName, [BNKEntry]$entry, [bool]$forceReplace) {
-        Write-Host $entry.data.Length
         # Perform validations
         if ($null -eq $entry) {
             throw "New entry is null and cannot be added."
