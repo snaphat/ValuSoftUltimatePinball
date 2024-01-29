@@ -765,14 +765,8 @@ class BNKArchive {
         The name of the entry retrieve.
     #>
     [BNKEntry] GetEntry([string]$name) {
-        foreach ($entry in $this.entries) {
-            if ([PatchTool]::ReadString($entry.name) -ieq $name) {
-                # Create and return a deep copy of the found entry
-                return $entry
-            }
-        }
-
-        return $null
+        $foundEntries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ieq $name }
+        if($null -ne $foundEntries) { return $foundEntries[0] } else { return $null }
     }
 
     <#
@@ -968,14 +962,14 @@ class BNKArchive {
         The name of the entry to remove.
     #>
     [void] RemoveEntry([string]$name) {
-        # Check if the entry exists
-        $entryExists = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ieq $name }
-        if (-not $entryExists) {
+        # Attempt to remove the entry with the specified name
+        $originalCount = $this.entries.Count
+        $this.entries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ine $name }
+
+        # Check if any entry was removed
+        if ($this.entries.Count -eq $originalCount) {
             throw "Entry with name '$name' not found."
         }
-
-        # Remove the entry with the specified name
-        $this.entries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ine $name }
     }
 
     <#
