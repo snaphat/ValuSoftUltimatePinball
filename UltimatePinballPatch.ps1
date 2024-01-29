@@ -1,6 +1,9 @@
 # Set ErrorActionPreference to "Stop"
 $ErrorActionPreference = "Stop"
 
+# Reset BNK cache.
+[PatchTool]::Reset()
+
 <#
 .SYNOPSIS
     A utility class for handling BNK file and general file patching operations.
