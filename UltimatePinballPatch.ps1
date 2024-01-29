@@ -94,16 +94,16 @@ class PatchTool {
         Performs a backup of the destination archive before adding. It loads both source and destination archives,
         clones the specified entry from the source, adds it to the destination, and then saves the changes.
 
-    .PARAMETER sourceEntry
-        The source entry in the format "SourceArchivePath:SourceEntryName".
+    .PARAMETER sourceArchivePathAndEntry
+        The source archive path and entry in the format "SourceArchivePath:SourceEntryName".
 
-    .PARAMETER destinationEntry
-        The destination entry in the format "DestinationArchivePath:DestinationEntryName".
+    .PARAMETER destinationArchivePathAndEntry
+        The destination archive path and entry in the format "DestinationArchivePath:DestinationEntryName".
     #>
-    static [void] BNKAdd([string]$sourceEntry, [string]$destinationEntry) {
+    static [void] BNKAdd([string]$sourceArchivePathAndEntry, [string]$destinationArchivePathAndEntry) {
         # Split the source and destination entries into their respective paths and names.
-        $sourceArchivePath, $sourceEntryName = $sourceEntry -split ':'
-        $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
+        $sourceArchivePath, $sourceEntryName = $sourceArchivePathAndEntry -split ':'
+        $destinationArchivePath, $destinationEntryName = $destinationArchivePathAndEntry -split ':'
 
         # Display the process of adding an entry in the console.
         Write-Host "- Adding entry " -NoNewLine
@@ -120,45 +120,34 @@ class PatchTool {
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
             # Load the source and destination archives.
             $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
-            $entry = $sourceArchive.CloneEntry($sourceEntryName)
-
-            # Update the name of the cloned entry.
-            $entry.Rename($destinationEntryName)
+            $entry = $sourceArchive.GetEntry($sourceEntryName)
 
             # Add the cloned entry to the destination archive and save it.
             $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
-            $destinationArchive.AddEntry($entry)
+            $destinationArchive.AddEntry($destinationEntryName, $entry)
             $destinationArchive.Save()
         }
     }
 
-    <#
-    .SYNOPSIS
-        Removes an entry from a BNK archive.
+    static [void] BNKAdd([BNKEntry]$entry, [string]$destinationEntry) {
+        # Split the destination entry into path and name.
+        $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
 
-    .DESCRIPTION
-        Performs a backup of the archive before removing the specified entry, then saves the changes to the archive.
-
-    .PARAMETER archivePath
-        The path of the BNK archive from which an entry is to be removed.
-
-    .PARAMETER entryName
-        The name of the entry to be removed.
-    #>
-    static [void] BNKRemove([string]$archivePath, [string]$entryName) {
-        # Display the process of removing an entry in the console.
-        Write-Host "- Removing entry " -NoNewLine
-        Write-Host "$archivePath" -ForeGroundColor yellow -NoNewLine
+        # Display the process of adding an entry in the console.
+        Write-Host "- Adding entry " -NoNewLine
+        Write-Host "$([PatchTool]::ReadString($entry.name))" -ForeGroundColor cyan -NoNewLine
+        Write-Host " -> " -ForeGroundColor green -NoNewLine
+        Write-Host "$destinationArchivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
-        Write-Host "$entryName" -ForeGroundColor cyan -NoNewLine
+        Write-Host "$destinationEntryName" -ForeGroundColor cyan -NoNewLine
         Write-Host "."
 
-        # Perform a backup before modifying the archive.
-        if ([PatchTool]::BackupFile($archivePath)) {
-            # Load the archive, remove the specified entry, and save the changes.
-            $archive = [BNKArchive]::Load($archivePath)
-            $archive.RemoveEntry($entryName)
-            $archive.Save()
+        # Perform a backup before modifying the destination archive.
+        if ([PatchTool]::BackupFile($destinationArchivePath)) {
+            # Add the entry to the destination archive and save it.
+            $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
+            $destinationArchive.AddEntry($destinationEntryName, $entry)
+            $destinationArchive.Save()
         }
     }
 
@@ -171,16 +160,16 @@ class PatchTool {
         clones the specified entry from the source, replaces the corresponding entry in the destination, and saves the
         changes.
 
-    .PARAMETER sourceEntry
-        The source entry in the format "SourceArchivePath:SourceEntryName".
+    .PARAMETER sourceArchivePathAndEntry
+        The source archive path and entry in the format "SourceArchivePath:SourceEntryName".
 
-    .PARAMETER destinationEntry
-        The destination entry in the format "DestinationArchivePath:DestinationEntryName".
+    .PARAMETER destinationArchivePathAndEntry
+        The destination archive path and entry in the format "DestinationArchivePath:DestinationEntryName".
     #>
-    static [void] BNKReplace([string]$sourceEntry, [string]$destinationEntry) {
+    static [void] BNKReplace([string]$sourceArchivePathAndEntry, [string]$destinationArchivePathAndEntry) {
         # Split the source and destination entries into their respective paths and names.
-        $sourceArchivePath, $sourceEntryName = $sourceEntry -split ':'
-        $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
+        $sourceArchivePath, $sourceEntryName = $sourceArchivePathAndEntry -split ':'
+        $destinationArchivePath, $destinationEntryName = $destinationArchivePathAndEntry -split ':'
 
         # Display the process of replacing an entry in the console.
         Write-Host "- Replacing entry " -NoNewLine
@@ -197,12 +186,67 @@ class PatchTool {
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
             # Load the source and destination archives.
             $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
-            $entry = $sourceArchive.CloneEntry($sourceEntryName)
+            $entry = $sourceArchive.GetEntry($sourceEntryName)
 
             # Replace the entry in the destination archive with the cloned entry and save it.
             $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
             $destinationArchive.ReplaceEntry($destinationEntryName, $entry)
             $destinationArchive.Save()
+        }
+    }
+
+    static [void] BNKReplace([BNKEntry]$entry, [string]$destinationArchivePathAndEntry) {
+        # Split the destination entry into path and name.
+        $destinationArchivePath, $destinationEntryName = $destinationArchivePathAndEntry -split ':'
+
+        # Display the process of replacing an entry in the console.
+        Write-Host "- Replacing entry " -NoNewLine
+        Write-Host "$([PatchTool]::ReadString($entry.name))" -ForeGroundColor cyan -NoNewLine
+        Write-Host " -> " -ForeGroundColor green -NoNewLine
+        Write-Host "$destinationArchivePath" -ForeGroundColor yellow -NoNewLine
+        Write-Host ":" -NoNewLine
+        Write-Host "$destinationEntryName" -ForeGroundColor cyan  -NoNewLine
+        Write-host "."
+
+        # Perform a backup before modifying the destination archive.
+        if ([PatchTool]::BackupFile($destinationArchivePath)) {
+            # Replace the entry in the destination archive with the entry and save it.
+            $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
+            $destinationArchive.ReplaceEntry($destinationEntryName, $entry)
+            $destinationArchive.Save()
+        }
+    }
+
+    <#
+    .SYNOPSIS
+        Removes an entry from a BNK archive.
+
+    .DESCRIPTION
+        Performs a backup of the archive before removing the specified entry, then saves the changes to the archive.
+
+    .PARAMETER archivePathAndEntry
+        The archive path and entry in the format "ArchivePath:EntryName".
+
+    .PARAMETER entryName
+        The name of the entry to be removed.
+    #>
+    static [void] BNKRemove([string]$archivePathAndEntry) {
+        # Split the entry into path and name.
+        $archivePath, $entryName = $archivePathAndEntry -split ':'
+
+        # Display the process of removing an entry in the console.
+        Write-Host "- Removing entry " -NoNewLine
+        Write-Host "$archivePath" -ForeGroundColor yellow -NoNewLine
+        Write-Host ":" -NoNewLine
+        Write-Host "$entryName" -ForeGroundColor cyan -NoNewLine
+        Write-Host "."
+
+        # Perform a backup before modifying the archive.
+        if ([PatchTool]::BackupFile($archivePath)) {
+            # Load the archive, remove the specified entry, and save the changes.
+            $archive = [BNKArchive]::Load($archivePath)
+            $archive.RemoveEntry($entryName)
+            $archive.Save()
         }
     }
 
@@ -269,15 +313,15 @@ class PatchTool {
         Backs up a file to a specific directory.
 
     .DESCRIPTION
-        Checks if the file exists and backs it up to the 'PatchBackups' directory. Throws an exception if the backup
-        file already exists.
+        Checks if the file exists and backs it up to the 'PatchBackups' directory. Does nothing if the backup already
+        exists.
 
     .PARAMETER fileName
         The name of the file to be backed up.
 
     .OUTPUTS
         Boolean
-        Returns True if the backup is successful, False otherwise.
+        Returns True if the backup is successful or already exists, False otherwise.
     #>
     static [bool] BackupFile([string]$fileName) {
         # Check if the file exists
@@ -292,7 +336,7 @@ class PatchTool {
 
             # Check if the backup file already exists
             if (Test-Path $backupFilePath) {
-                throw "Backup file '$backupFilePath' already exists."
+                return $true
             }
 
             # Copy the file to the backup directory
@@ -607,8 +651,8 @@ class BNKWrappedEntry {
     Represents a BNK archive.
 
 .DESCRIPTION
-    This class encapsulates the data and functionality for working with BNK files. It includes methods for loading
-    and saving archives, adding, removing, and replacing entries.
+    This class encapsulates the data and functionality for working with BNK files. It includes methods for loading and
+    saving archives, adding, removing, and replacing entries.
 #>
 class BNKArchive {
     [string] $archivePath
@@ -712,6 +756,27 @@ class BNKArchive {
 
     <#
     .SYNOPSIS
+        Gets an entry from the archive.
+
+    .DESCRIPTION
+        Returns a reference to the entry from the archive based on its name. Returns null if the entry is not found.
+
+    .PARAMETER name
+        The name of the entry retrieve.
+    #>
+    [BNKEntry] GetEntry([string]$name) {
+        foreach ($entry in $this.entries) {
+            if ([PatchTool]::ReadString($entry.name) -ieq $name) {
+                # Create and return a deep copy of the found entry
+                return $entry
+            }
+        }
+
+        return $null
+    }
+
+    <#
+    .SYNOPSIS
         Clones an entry from the archive.
 
     .DESCRIPTION
@@ -722,15 +787,8 @@ class BNKArchive {
         The name of the entry to clone.
     #>
     [BNKEntry] CloneEntry([string]$name) {
-        foreach ($entry in $this.entries) {
-            if ([PatchTool]::ReadString($entry.name) -ieq $name) {
-                # Create and return a deep copy of the found entry
-                return $entry.Clone()
-            }
-        }
-
-        # Throw an error if no entry with the matching name is found
-        throw "Entry with name '$name' not found in the archive."
+        # Create and return a deep copy of the found entry
+        return GetEntry($name).clone()
     }
 
     <#
@@ -816,21 +874,23 @@ class BNKArchive {
         if ($null -eq $entry) {
             throw "New entry is null and cannot be added."
         }
-
         if ($entry.data.Length -eq 0) {
-            throw "New entry has no data."
+            throw "New entry has no data and cannot be added."
         }
 
         # Check for duplicate entry names
-        foreach ($entry in $this.entries) {
-            if ([PatchTool]::ReadString($entry.name) -ieq $entryName) {
-                if (!$forceReplace) {
-                    throw "An entry with the name '$entryName' already exists."
-                }
-                else {
-                    $this.replaceEntry($entryName, $entry)
-                    return
-                }
+        $foundEntry = $this.GetEntry($entryName)
+        if ($null -ne $foundEntry) {
+            if (!$forceReplace) {
+                throw "An entry with the name '$entryName' already exists."
+            }
+            else {
+                # modify the entry data
+                $foundEntry.data = [byte[]]::new($entry.data.Length)
+                $entry.data.CopyTo($foundEntry.data, 0)
+                $foundEntry.uncompressedSize = $entry.uncompressedSize
+                $foundEntry.isCompressed = $entry.isCompressed
+                return
             }
         }
 
@@ -874,31 +934,27 @@ class BNKArchive {
         the entry to be replaced.
     #>
     [void] ReplaceEntry([string]$entryName, [BNKEntry]$entry) {
-        # Validate that the new entry is not null
+        # Perform validations
         if ($null -eq $entry) {
             throw "New entry is null and cannot be used for replacement."
         }
-
-        # Find the index of the entry to be replaced based on the provided name
-        $indexToReplace = -1
-        for ($i = 0; $i -lt $this.entries.Length; $i++) {
-            if ([PatchTool]::ReadString($this.entries[$i].name) -ieq $entryName) {
-                $indexToReplace = $i
-                break
-            }
+        if ($entry.data.Length -eq 0) {
+            throw "New entry has no data and cannot be used for replacement."
         }
 
+        # Find the index of the entry to be replaced based on the provided name
+        $foundEntry = $this.GetEntry($entryName)
+
         # Throw an error if the specified entry is not found in the archive
-        if ($indexToReplace -eq -1) {
+        if ($null -eq $foundEntry) {
             throw "Entry with name '$entryName' not found."
         }
 
-        # Clone the new entry to ensure independence and retain the original name of the entry
-        $clone = $entry.Clone()
-        $clone.Rename($entryName);
-
-        # Replace the old entry with the cloned new entry
-        $this.entries[$indexToReplace] = $clone
+        # modify the entry data
+        $foundEntry.data = [byte[]]::new($entry.data.Length)
+        $entry.data.CopyTo($foundEntry.data, 0)
+        $foundEntry.uncompressedSize = $entry.uncompressedSize
+        $foundEntry.isCompressed = $entry.isCompressed
     }
 
     <#
