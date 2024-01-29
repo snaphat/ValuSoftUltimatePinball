@@ -101,40 +101,105 @@ class PatchTool {
         The destination archive path and entry in the format "DestinationArchivePath:DestinationEntryName".
     #>
     static [void] BNKAdd([string]$sourceArchivePathAndEntry, [string]$destinationArchivePathAndEntry) {
-        # Split the source and destination entries into their respective paths and names.
+        [PatchTool]::BNKAdd($sourceArchivePathAndEntry, $destinationArchivePathAndEntry, $false)
+    }
+
+    <#
+    .SYNOPSIS
+        Adds an entry from one BNK archive to another or replacing an existing one.
+
+    .DESCRIPTION
+        Performs a backup of the destination archive before adding. It loads both source and destination archives,
+        clones the specified entry from the source, adds it to the destination or replaces it, and then saves the
+        changes.
+
+    .PARAMETER sourceArchivePathAndEntry
+        The source archive path and entry in the format "SourceArchivePath:SourceEntryName".
+
+    .PARAMETER destinationArchivePathAndEntry
+        The destination archive path and entry in the format "DestinationArchivePath:DestinationEntryName".
+    #>
+    static [void] BNKAdd([string]$sourceArchivePathAndEntry, [string]$destinationArchivePathAndEntry, [bool]$forceReplace) {
+        # Split the source and destination entries into path and name.
         $sourceArchivePath, $sourceEntryName = $sourceArchivePathAndEntry -split ':'
         $destinationArchivePath, $destinationEntryName = $destinationArchivePathAndEntry -split ':'
 
-        # Display the process of adding an entry in the console.
-        Write-Host "- Adding entry " -NoNewLine
+        # Display the process of replacing an entry in the console.
+        Write-Host "- Copying entry " -NoNewLine
         Write-Host "$sourceArchivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
         Write-Host "$sourceEntryName" -ForeGroundColor cyan -NoNewLine
         Write-Host " -> " -ForeGroundColor green -NoNewLine
         Write-Host "$destinationArchivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
-        Write-Host "$destinationEntryName" -ForeGroundColor cyan -NoNewLine
-        Write-Host "."
+        Write-Host "$destinationEntryName" -ForeGroundColor cyan  -NoNewLine
+        Write-host "."
 
         # Perform a backup before modifying the destination archive.
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
-            # Load the source and destination archives.
-            $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
+            # Load the source archive and cache it or grab the cached copy.
+            $sourceArchive = [PatchTool]::cachedsourceArchives[$sourceArchivePath]
+            if ($null -eq $sourceArchive) {
+                $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
+                [PatchTool]::cachedsourceArchives.Add($sourceArchivePath, $sourceArchive)
+            }
+
+            # Load the destination archive and cache it or grab the cached copy.
+            $destinationArchive = [PatchTool]::cachedDestinationArchives[$destinationArchivePath]
+            if ($null -eq $destinationArchive) {
+                $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
+                [PatchTool]::cachedDestinationArchives.Add($destinationArchivePath, $destinationArchive)
+            }
+
+            # Grab the source entry.
             $entry = $sourceArchive.GetEntry($sourceEntryName)
 
-            # Add the cloned entry to the destination archive and save it.
-            $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
-            $destinationArchive.AddEntry($destinationEntryName, $entry)
+            # Add the entry to the destination archive and save it.
+            $destinationArchive.AddEntry($destinationEntryName, $entry, $forceReplace)
             $destinationArchive.Save()
         }
     }
 
+    <#
+    .SYNOPSIS
+        Adds a new entry to a BNK Archive.
+
+    .DESCRIPTION
+        Performs a backup of the destination archive before adding. It loads the destination archives, clones the
+        specified entry, adds it to the destination, and then saves the changes.
+
+    .PARAMETER $entry
+        The BNKEntry object to add to the archive.
+
+    .PARAMETER destinationArchivePathAndEntry
+        The destination archive path and entry in the format "DestinationArchivePath:DestinationEntryName".
+    #>
     static [void] BNKAdd([BNKEntry]$entry, [string]$destinationEntry) {
+        [PatchTool]::BNKAdd($entry, $destinationEntry, $false)
+    }
+
+    <#
+    .SYNOPSIS
+        Adds a new entry to a BNK Archive or replaces an existing one.
+
+    .DESCRIPTION
+        Performs a backup of the destination archive before adding. It loads the destination archives, clones the
+        specified entry, adds it to the destination or replaces it, and then saves the changes.
+
+    .PARAMETER $entry
+        The BNKEntry object to add to the archive.
+
+    .PARAMETER destinationArchivePathAndEntry
+        The destination archive path and entry in the format "DestinationArchivePath:DestinationEntryName".
+    #>
+    static [void] BNKAdd([BNKEntry]$entry, [string]$destinationArchivePathAndEntry, [bool]$forceReplace) {
         # Split the destination entry into path and name.
-        $destinationArchivePath, $destinationEntryName = $destinationEntry -split ':'
+        $destinationArchivePath, $destinationEntryName = $destinationArchivePathAndEntry -split ':'
 
         # Display the process of adding an entry in the console.
-        Write-Host "- Adding entry " -NoNewLine
+        Write-Host "- Copying entry " -NoNewLine
+        Write-Host "Internal" -ForeGroundColor magenta -NoNewLine
+        Write-Host ":" -NoNewLine
         Write-Host "$([PatchTool]::ReadString($entry.name))" -ForeGroundColor cyan -NoNewLine
         Write-Host " -> " -ForeGroundColor green -NoNewLine
         Write-Host "$destinationArchivePath" -ForeGroundColor yellow -NoNewLine
@@ -144,9 +209,15 @@ class PatchTool {
 
         # Perform a backup before modifying the destination archive.
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
+            # Load the destination archive and cache it or grab the cached copy.
+            $destinationArchive = [PatchTool]::cachedDestinationArchives[$destinationArchivePath]
+            if ($null -eq $destinationArchive) {
+                $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
+                [PatchTool]::cachedDestinationArchives.Add($destinationArchivePath, $destinationArchive)
+            }
+
             # Add the entry to the destination archive and save it.
-            $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
-            $destinationArchive.AddEntry($destinationEntryName, $entry)
+            $destinationArchive.AddEntry($destinationEntryName, $entry, $forceReplace)
             $destinationArchive.Save()
         }
     }
@@ -167,7 +238,7 @@ class PatchTool {
         The destination archive path and entry in the format "DestinationArchivePath:DestinationEntryName".
     #>
     static [void] BNKReplace([string]$sourceArchivePathAndEntry, [string]$destinationArchivePathAndEntry) {
-        # Split the source and destination entries into their respective paths and names.
+        # Split the source and destination entries into path and name.
         $sourceArchivePath, $sourceEntryName = $sourceArchivePathAndEntry -split ':'
         $destinationArchivePath, $destinationEntryName = $destinationArchivePathAndEntry -split ':'
 
@@ -184,12 +255,24 @@ class PatchTool {
 
         # Perform a backup before modifying the destination archive.
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
-            # Load the source and destination archives.
-            $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
+            # Load the source archive and cache it or grab the cached copy.
+            $sourceArchive = [PatchTool]::cachedsourceArchives[$sourceArchivePath]
+            if ($null -eq $sourceArchive) {
+                $sourceArchive = [BNKArchive]::Load($sourceArchivePath)
+                [PatchTool]::cachedsourceArchives.Add($sourceArchivePath, $sourceArchive)
+            }
+
+            # Load the destination archive and cache it or grab the cached copy.
+            $destinationArchive = [PatchTool]::cachedDestinationArchives[$destinationArchivePath]
+            if ($null -eq $destinationArchive) {
+                $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
+                [PatchTool]::cachedDestinationArchives.Add($destinationArchivePath, $destinationArchive)
+            }
+
+            # Grab the source entry.
             $entry = $sourceArchive.GetEntry($sourceEntryName)
 
-            # Replace the entry in the destination archive with the cloned entry and save it.
-            $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
+            # Replace the entry in the destination archive with the entry and save it.
             $destinationArchive.ReplaceEntry($destinationEntryName, $entry)
             $destinationArchive.Save()
         }
@@ -200,7 +283,9 @@ class PatchTool {
         $destinationArchivePath, $destinationEntryName = $destinationArchivePathAndEntry -split ':'
 
         # Display the process of replacing an entry in the console.
-        Write-Host "- Replacing entry " -NoNewLine
+        Write-Host "- Copying entry " -NoNewLine
+        Write-Host "Internal" -ForeGroundColor magenta -NoNewLine
+        Write-Host ":" -NoNewLine
         Write-Host "$([PatchTool]::ReadString($entry.name))" -ForeGroundColor cyan -NoNewLine
         Write-Host " -> " -ForeGroundColor green -NoNewLine
         Write-Host "$destinationArchivePath" -ForeGroundColor yellow -NoNewLine
@@ -210,8 +295,14 @@ class PatchTool {
 
         # Perform a backup before modifying the destination archive.
         if ([PatchTool]::BackupFile($destinationArchivePath)) {
+            # Load the destination archive and cache it or grab the cached copy.
+            $destinationArchive = [PatchTool]::cachedDestinationArchives[$destinationArchivePath]
+            if ($null -eq $destinationArchive) {
+                $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
+                [PatchTool]::cachedDestinationArchives.Add($destinationArchivePath, $destinationArchive)
+            }
+
             # Replace the entry in the destination archive with the entry and save it.
-            $destinationArchive = [BNKArchive]::Load($destinationArchivePath)
             $destinationArchive.ReplaceEntry($destinationEntryName, $entry)
             $destinationArchive.Save()
         }
@@ -235,7 +326,7 @@ class PatchTool {
         $archivePath, $entryName = $archivePathAndEntry -split ':'
 
         # Display the process of removing an entry in the console.
-        Write-Host "- Removing entry " -NoNewLine
+        Write-Host "- Deleting entry " -NoNewLine
         Write-Host "$archivePath" -ForeGroundColor yellow -NoNewLine
         Write-Host ":" -NoNewLine
         Write-Host "$entryName" -ForeGroundColor cyan -NoNewLine
@@ -243,8 +334,14 @@ class PatchTool {
 
         # Perform a backup before modifying the archive.
         if ([PatchTool]::BackupFile($archivePath)) {
-            # Load the archive, remove the specified entry, and save the changes.
-            $archive = [BNKArchive]::Load($archivePath)
+            # Load the destination archive and cache it or grab the cached copy.
+            $archive = [PatchTool]::cachedDestinationArchives[$archivePath]
+            if ($null -eq $archive) {
+                $archive = [BNKArchive]::Load($archivePath)
+                [PatchTool]::cachedarchives.Add($archivePath, $archive)
+            }
+
+            # Remove the specified entry, and save the changes.
             $archive.RemoveEntry($entryName)
             $archive.Save()
         }
@@ -766,7 +863,7 @@ class BNKArchive {
     #>
     [BNKEntry] GetEntry([string]$name) {
         $foundEntries = $this.entries | Where-Object { [PatchTool]::ReadString($_.name) -ieq $name }
-        if($null -ne $foundEntries) { return $foundEntries[0] } else { return $null }
+        if ($null -ne $foundEntries) { return $foundEntries[0] } else { return $null }
     }
 
     <#
