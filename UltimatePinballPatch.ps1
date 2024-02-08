@@ -1336,6 +1336,253 @@ class BNKArchive {
     }
 }
 
+class SpriteChunk {
+    [int16] $drawOffset
+    #[byte[]] $data
+    [uint32] $chunkOffset;
+    [uint16] $chunkLength;
+    [byte[]] $archiveData
+    SpriteChunk([byte[]]$archiveData, [uint32]$offset) {
+        $this.archiveData = $archiveData
+        $this.drawOffset = [PatchTool]::ReadInt16($archiveData, $offset)
+        $this.chunkLength = [PatchTool]::ReadUInt16($archiveData, $offset+2)
+        $offset += 4
+
+
+        if($this.chunkLength -eq 0x0) {
+            #throw "Sprite Chunk Length of zero not allowed (@ file offset $($offset-2))"
+            $this.chunkOffset = 0
+        }
+        elseif($this.chunkLength -ne 0xffff) {
+            $this.chunkOffset = $offset
+            # $this.data = [PatchTool]::ReadByteArray($archiveData, $offset, $this.chunkLength)
+        }
+    }
+
+    [byte] GetByte([uint32]$index) {
+        return $this.archiveData[$this.chunkOffset + $index]
+    }
+
+    [uint64] TotalSize() {
+        if ($this.chunkOffset -ne 0) { return 4 + $this.chunkLength } else { return 4 }
+    }
+}
+
+class Sprite {
+    [int32] $width
+    [int32] $height
+    [uint32] $centerX
+    [uint32] $centerY
+    [SpriteChunk[]] $chunks
+
+    Sprite([byte[]]$archiveData, [uint32]$offset) {
+        $this.chunks = @()  # Initialize the chunks array as empty
+
+        $this.width =  [PatchTool]::ReadUInt32($archiveData, $offset)
+        $this.height =  [PatchTool]::ReadUInt32($archiveData, $offset+4)
+        $this.centerX =  [PatchTool]::ReadUInt32($archiveData, $offset+8)
+        $this.centerY =  [PatchTool]::ReadUInt32($archiveData, $offset+12)
+        $spriteLength = [PatchTool]::ReadUInt32($archiveData, $offset+16)
+        $offset += $this.HeaderSize()
+
+        $spriteEnd = $offset + $spriteLength
+        while($offset -lt $spriteEnd) {
+            $this.chunks += [SpriteChunk]::new($archiveData, $offset)
+            $offset += $this.chunks[-1].TotalSize()
+        }
+
+        if($spriteLength -ne $this.ChunksSize()) {
+            throw "Sprite Length does not match decoded sprite length in file ($spriteLength != $($this.ChunksSize()))"
+        }
+    }
+
+    [uint64] HeaderSize() {
+        return 4 * 5
+    }
+
+    [uint64] ChunksSize() {
+        return ($this.chunks | ForEach-Object { $_.TotalSize() } | Measure-Object -Sum).Sum
+    }
+
+    [uint64] TotalSize() {
+        return $this.HeaderSize() + $this.ChunksSize()
+    }
+}
+
+class SpriteBank {
+    [string] $archivePath
+    [uint32] $count
+    [Sprite[]] $sprites
+
+    SpriteBank([string]$archivePath) {
+        # Check that the archive exists.
+        if (!(Test-Path $archivePath -PathType Leaf)) {
+            throw "'$archivePath' not found!"
+        }
+
+        $this.archivePath = $archivePath
+        $this.sprites = @()  # Initialize the sprites array as empty
+
+        # Read the entire file as a byte array
+        $archiveData = Get-Content -Path $archivePath -Encoding Byte -Raw
+
+        $spriteCount = [PatchTool]::ReadUInt32($archiveData, 0)
+
+        $offset = $this.HeaderSize()
+
+        for ($i = 0; $i -lt $spriteCount; $i++) {
+            if($offset -eq $archiveData.Length) {
+                break
+            }
+            $this.sprites += [Sprite]::new($archiveData, $offset)
+            $offset += $this.sprites[-1].TotalSize()
+        }
+
+        if($archiveData.Length -ne $this.TotalSize()) {
+            throw "SpriteBank Length does not match file size ($($archiveData.Length) != $($this.TotalSize()))"
+        }
+    }
+
+    [uint64] HeaderSize() {
+        return 4
+    }
+
+    [uint64] SpritesSize() {
+        return ($this.sprites | ForEach-Object { $_.TotalSize() } | Measure-Object -Sum).Sum
+    }
+
+    [uint64] TotalSize() {
+        return $this.HeaderSize() + $this.SpritesSize()
+    }
+
+    [void] Dump([ColorPalette] $palette) {
+        [System.Reflection.Assembly]::LoadWithPartialName("System.Drawing")
+
+        #  Write-Host " ==> Write-Host Sprite Count: $($this.sprites.Length)"
+
+        $spriteIndex = 0
+        foreach ($sprite in $this.sprites) {
+            if ($sprite.width -eq 0 -or $sprite.height -eq 0) {
+                continue
+            }
+
+            # Write-Host "`nSprite size ($($sprite.width)x$($sprite.height)) with center ($($sprite.centerX),$($sprite.centerY))`n-----------------"
+            # Write-Host "d_coord`t d_off`t c_off`t c_length`tmath"
+            $bmp = New-Object System.Drawing.Bitmap($sprite.width, $sprite.height)
+
+            $drawOffset = 0
+            foreach($chunk in $sprite.chunks) {
+                # $oldDrawOffset = $drawOffset
+                if ($chunk.drawOffset -ge 0) {
+                    $drawOffset += $chunk.drawOffset
+
+                    # Print
+                    # $x = $drawOffset % $sprite.width
+                    # # $y = [math]::Floor($drawOffset / $sprite.width)
+                    # Write-Host "($x,$y)`t $drawOffset`t  $($chunk.drawOffset)`t  $($chunk.data.length)`t    $drawOffset = $oldDrawOffset + $($chunk.drawOffset)"
+                }
+                else {
+                    $drawOffset += $sprite.width + $chunk.drawOffset + 1
+
+                    # print
+                    # $x = $drawOffset % $sprite.width
+                    # $y = [math]::Floor($drawOffset / $sprite.width)
+                    # Write-Host "($x,$y)`t  $drawOffset`t  $($chunk.drawOffset)`t  $($chunk.data.length)`t    $drawOffset = $oldDrawOffset + $($sprite.width) + $($chunk.drawOffset) + 1"
+                }
+
+                $chunkStartY = [math]::Floor($drawOffset / $sprite.width)
+                for($i=0; $i -lt $chunk.chunkLength -and $chunk.chunkLength -ne 0xffff; $i++) {
+                    $x = $drawOffset % $sprite.width
+                    $y = [math]::Floor($drawOffset / $sprite.width)
+
+                    # Sanity check
+                    if ($chunkStartY -ne $y) {
+                        throw "y=$chunkStartY changed to $y in middle of chunk with drawoffset of $($chunk.drawOffset) $i $($chunk.chunkLength)"
+                    }
+
+                    $bmp.SetPixel($x, $y, $palette.Get($chunk.GetByte($i)))
+
+                    $drawOffset++
+                    $chunkStartY = $y
+                }
+            }
+
+            $fileName = Split-Path $this.archivePath -Leaf
+
+            $directoryPath = Split-Path $this.archivePath -Parent
+
+            $outFilePath = "$directoryPath\$fileName.$($spriteIndex).bmp"
+            Write-Host "Writing file $outFilePath"
+            $bmp.Save($outFilePath)
+            $spriteIndex++
+        }
+    }
+}
+
+[string[]] $Global:failedEntries = @()
+class ColorPalette {
+    [string] $archivePath
+    [System.Drawing.Color[]] $map
+
+
+    ColorPalette([string]$archivePath) {
+        # Check that the archive exists.
+        if (!(Test-Path $archivePath -PathType Leaf)) {
+            throw "'$archivePath' not found!"
+        }
+
+        $this.archivePath = $archivePath
+
+        $this.map = New-Object System.Drawing.Color[] 256
+
+        # Read the entire file as a byte array
+        $archiveData = Get-Content -Path $archivePath -Encoding Byte -Raw
+
+        for ($i = 0; $i -lt 256; $i++) {
+            $r = $archiveData[32 + $i*3]
+            $g = $archiveData[32 + $i*3+1]
+            $b = $archiveData[32 + $i*3+2]
+            $this.map[$i] = [System.Drawing.Color]::FromArgb(255, $r, $g, $b)
+
+            # $style = [System.Globalization.NumberStyles]::HexNumber
+            # Write-Host "$($r.ToString("X2")) $($g.ToString("X2")) $($b.ToString("X2")) "
+        }
+    }
+
+    [System.Drawing.Color] Get([byte]$index) {
+        return $this.map[$index]
+    }
+
+    [void] DumpAllSprites() {
+
+        $directoryPath = Split-Path $this.archivePath -Parent
+
+        # Retrieve all files, then filter for specific extensions
+        $files = Get-ChildItem -Path $directoryPath -File | Where-Object {
+            $_.Extension -match "\.(SPB|SP0|SP1|DSB|DS0|DS1)$"
+        }
+
+        # Iterate over each SPB file
+        foreach ($file in $files) {
+            # Process the sprite bank here
+            Write-Host "Processing file: $($file.FullName)"
+
+            try {
+                # Create a new SpriteBank object for each SPB file
+                $spriteBank = [SpriteBank]::New($file.FullName)
+
+                Write-Host "Dumping spritebank: $($file.FullName)"
+                #
+                $spriteBank.Dump($this)
+            } catch {
+                Write-Host "Error: $($_.Exception.Message)" -Foreground "Red"
+                Write-Host $_.ScriptStackTrace -Foreground "DarkGray"
+                $Global:failedEntries += $file.FullName
+            }
+        }
+    }
+}
+
 try {
     # Restore any backups
     [PatchTool]::RestoreBackups()
