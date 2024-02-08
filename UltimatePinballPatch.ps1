@@ -13,6 +13,53 @@ $ErrorActionPreference = "Stop"
     and patching files with byte-level precision.
 #>
 class PatchTool {
+    <#
+    .SYNOPSIS
+        Reads a 16-bit unsigned integer from a byte array at a specific offset.
+
+    .DESCRIPTION
+        Extracts a 2-byte segment from the byte array starting at the given offset and converts it to a 16-bit unsigned
+        integer.
+
+    .PARAMETER data
+        The byte array from which to read.
+
+    .PARAMETER offset
+        The position in the byte array to begin reading.
+
+    .OUTPUTS
+        System.UInt16
+        Returns a 16-bit unsigned integer.
+    #>
+    static [uint16] ReadUInt16([byte[]]$data, [uint64]$offset) {
+        # Extracts a 2-byte segment from the byte array starting at the given offset
+        # Converts this 2-byte segment to a 16-bit integer
+        return [BitConverter]::ToUInt16($data[$offset..($offset + 1)], 0)
+    }
+
+    <#
+    .SYNOPSIS
+        Reads a 16-bit signed integer from a byte array at a specific offset.
+
+    .DESCRIPTION
+        Extracts a 2-byte segment from the byte array starting at the given offset and converts it to a 16-bit signed
+        integer.
+
+    .PARAMETER data
+        The byte array from which to read.
+
+    .PARAMETER offset
+        The position in the byte array to begin reading.
+
+    .OUTPUTS
+        System.Int16
+        Returns a 16-bit signed integer.
+    #>
+    static [int16] ReadInt16([byte[]]$data, [uint64]$offset) {
+        # Extracts a 2-byte segment from the byte array starting at the given offset
+        # Converts this 2-byte segment to a 16-bit integer
+        return [BitConverter]::ToInt16($data[$offset..($offset + 1)], 0)
+    }
 
     <#
     .SYNOPSIS
@@ -32,7 +79,7 @@ class PatchTool {
         System.UInt32
         Returns a 32-bit unsigned integer.
     #>
-    static [uint32] ReadUInt32([byte[]]$data, [uint32]$offset) {
+    static [uint32] ReadUInt32([byte[]]$data, [uint64]$offset) {
         # Extracts a 4-byte segment from the byte array starting at the given offset
         # Converts this 4-byte segment to a 32-bit integer
         return [BitConverter]::ToUInt32($data[$offset..($offset + 3)], 0)
@@ -59,7 +106,7 @@ class PatchTool {
         byte[]
         Returns the specified segment of the byte array.
     #>
-    static [byte[]] ReadByteArray([byte[]]$data, [uint32]$offset, [uint32]$size) {
+    static [byte[]] ReadByteArray([byte[]]$data, [uint64]$offset, [uint64]$size) {
         # Extracts a segment of the byte array starting at $offset and ending at $offset + $size
         # The -1 adjusts the range to be inclusive of the start and exclusive of the end
         return $data[$offset..($offset + $size - 1)]
@@ -704,6 +751,57 @@ class BNKEntry {
 
         # Assign the padded byte array to the name
         $this.name = $paddedNameBytes
+    }
+
+    [void] Decompress() {
+        if (!$this.isCompressed) { return }
+        $decompressedData = New-Object System.Collections.Generic.List[byte]
+        $destBuffer = New-Object byte[] 4096  # Circular buffer of 4096 bytes
+        $bufferPointer = 0xFEE  # Initial buffer pointer, can vary based on implementation
+        $i = 0
+
+        while ($i -lt $this.data.Length) {
+            $ControlByte = $this.data[$i]
+            $i += 1
+
+            for ($Bit = 0; $Bit -lt 8; $Bit++) {
+                if ($i -ge $this.data.Length) {
+                    break
+                }
+
+                if ($ControlByte -band (1 -shl $Bit)) {
+                    # Literal byte
+                    $Byte = $this.data[$i]
+                    $i += 1
+                    $decompressedData.Add($Byte)
+                    $destBuffer[$bufferPointer] = $Byte
+                    $bufferPointer = ($bufferPointer + 1) -band 0xFFF
+                }
+                else {
+                    if ($i + 1 -ge $this.data.Length) {
+                        break
+                    }
+
+                    # Extract offset and length based on the provided format
+                    $Offset = ((($this.data[$i + 1] -shr 4) -band 0xF) -shl 8) -bor $this.data[$i]
+                    $Length = ($this.data[$i + 1] -band 0xF) + 3
+                    $i += 2
+
+                    for ($j = 0; $j -lt $Length; $j++) {
+                        $Byte = $destBuffer[($Offset + $j) -band 0xFFF]
+                        $decompressedData.Add($Byte)
+                        $destBuffer[$bufferPointer] = $Byte
+                        $bufferPointer = ($bufferPointer + 1) -band 0xFFF
+                    }
+                }
+            }
+        }
+
+        $this.isCompressed = $false
+        $this.data = $decompressedData
+        if($this.data.Length -ne $this.uncompressedSize) {
+            throw "Error: Decompression size does not match expected size $($this.data.Length) != $($this.uncompressedSize)"
+        }
     }
 }
 
